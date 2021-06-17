@@ -1,25 +1,86 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useState } from "react";
+import io from "socket.io-client";
+import { BandAdd } from "./components/BandAdd";
+import { BandList } from "./components/BandList";
 
-function App() {
+const connectSocketServer = () => {
+  const socket = io.connect("http://localhost:8080", {
+    transports: ["websocket"],
+  });
+  return socket;
+};
+
+export const App = () => {
+  const [socket] = useState(connectSocketServer);
+  const [online, setOnline] = useState(false);
+  const [band, setBand] = useState([]);
+
+  useEffect(() => {
+    setOnline(socket.connected);
+  }, [socket]);
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      setOnline(true);
+    });
+  }, [socket]);
+
+  useEffect(() => {
+    socket.on("disconnect", () => {
+      setOnline(false);
+    });
+  }, [socket]);
+
+  useEffect(() => {
+    socket.on("current-bands", (bands) => {
+      setBand(bands);
+    });
+  }, [socket]);
+
+  const votar = (id) => {
+    socket.emit("votar-banda", id);
+  };
+
+  const borrar = (id) => {
+    socket.emit("borrar-banda", id);
+  };
+
+  const cambiarNombre = (id, nombre) => {
+    socket.emit("change-name", { id, nombre });
+  };
+
+  const addName = (name) => {
+    socket.emit("nuevo-name", { name });
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
+    <div className="container">
+      <div className="alert">
         <p>
-          Edit <code>src/App.js</code> and save to reload.
+          Service status
+          {online ? (
+            <span className="text-success"> Online</span>
+          ) : (
+            <span className="text-danger"> Offline</span>
+          )}
         </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      </div>
+
+      <h1>BandNames</h1>
+      <hr />
+      <div className="row">
+        <div className="col-12 col-md-4">
+          <BandAdd addName={addName} />
+        </div>
+        <div className="col-12 col-md-8">
+          <BandList
+            data={band}
+            votar={votar}
+            borrar={borrar}
+            cambiarNombre={cambiarNombre}
+          />
+        </div>
+      </div>
     </div>
   );
-}
-
-export default App;
+};
